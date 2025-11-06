@@ -164,7 +164,7 @@ Load in MCP config:
 {
   "mcpServers": {
     "semantic-layer": {
-      "command": "/path/to/venv/bin/python",
+      "command": "/path/to/.venv/bin/python",
       "args": ["/path/to/src/mcp_server.py"],
       "env": {
         "SEMANTIC_MODELS_PATH": "/path/to/metrics.yml",

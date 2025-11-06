@@ -183,7 +183,7 @@ GROUP BY customer_segment
 ### Claude Desktop doesn't show the 🔌 icon
 
 1. Check that the paths in `claude_desktop_config.json` are absolute (not relative)
-2. Check that Python path is correct: `/path/to/venv/bin/python`
+2. Check that Python path is correct: `/path/to/.venv/bin/python`
 3. Check logs in Claude Desktop (Help → View Logs)
 
 ### "Module not found" errors
