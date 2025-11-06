@@ -8,26 +8,35 @@ This guide will get you up and running with the Semantic Layer MCP Server in jus
 - Python 3.11 or higher
 - Claude Desktop app installed
 - Basic understanding of your data warehouse
+- `uv` (will be installed automatically if not present)
 
 ## Step 1: Clone and Setup (2 minutes)
 
+**Option 1: Automated Setup (Recommended)**
 ```bash
-# Clone the repository
 cd knowDB
-
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install dependencies
-pip install -r requirements.txt
+./setup.sh  # Installs uv if needed, sets up environment, runs tests
 ```
+
+**Option 2: Manual Setup**
+```bash
+# Install uv (if not already installed)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Create virtual environment with uv
+uv venv
+
+# Install dependencies (much faster than pip!)
+uv pip install -e ".[dev]"
+```
+
+> **Why uv?** It's 10-100x faster than pip, has better dependency resolution, and is the modern Python package manager.
 
 ## Step 2: Generate Sample Data (1 minute)
 
 ```bash
 # Generate sample e-commerce data in DuckDB
-python create_sample_data.py
+uv run python create_sample_data.py
 ```
 
 You should see output like:
@@ -49,7 +58,7 @@ You should see output like:
 
 ```bash
 # Test that everything works
-python src/semantic_layer.py
+uv run python src/semantic_layer.py
 ```
 
 You should see:
@@ -83,7 +92,7 @@ Add this configuration:
 {
   "mcpServers": {
     "semantic-layer": {
-      "command": "/FULL/PATH/TO/knowDB/venv/bin/python",
+      "command": "/FULL/PATH/TO/knowDB/.venv/bin/python",
       "args": [
         "/FULL/PATH/TO/knowDB/src/mcp_server.py"
       ],
@@ -95,7 +104,9 @@ Add this configuration:
 }
 ```
 
-**Important:** Replace `/FULL/PATH/TO/knowDB` with the actual absolute path to your knowDB directory.
+**Important:**
+- Replace `/FULL/PATH/TO/knowDB` with the actual absolute path to your knowDB directory.
+- Note the `.venv` directory (created by uv) instead of `venv`.
 
 To find your absolute path:
 ```bash
@@ -177,10 +188,13 @@ GROUP BY customer_segment
 
 ### "Module not found" errors
 
-Make sure you're using the Python from your virtual environment:
+Make sure you're using the Python from your uv virtual environment:
 ```bash
 # Test this works:
-/path/to/knowDB/venv/bin/python -c "import mcp; import ibis; print('OK')"
+/path/to/knowDB/.venv/bin/python -c "import mcp; import ibis; print('OK')"
+
+# Or use uv run:
+uv run python -c "import mcp; import ibis; print('OK')"
 ```
 
 ### "Configuration file not found" error
@@ -191,10 +205,10 @@ Make sure `SEMANTIC_MODELS_PATH` points to the absolute path of `metrics.yml`
 
 ```bash
 # Re-run setup
-python create_sample_data.py
+uv run python create_sample_data.py
 
 # Run tests
-python -m pytest tests/ -v
+uv run pytest tests/ -v
 ```
 
 ## Next Steps

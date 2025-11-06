@@ -19,14 +19,11 @@ This guide helps you resolve common issues with the Semantic Layer MCP Server.
 
 **Solution:**
 ```bash
-# Make sure you're in your virtual environment
-source venv/bin/activate  # or venv\Scripts\activate on Windows
-
-# Install requirements
-pip install -r requirements.txt
+# Install dependencies with uv
+uv pip install -e ".[dev]"
 
 # Verify installation
-python -c "import mcp; print('MCP installed successfully')"
+uv run python -c "import mcp; print('MCP installed successfully')"
 ```
 
 ### Issue: `ModuleNotFoundError: No module named 'ibis'`
@@ -35,10 +32,10 @@ python -c "import mcp; print('MCP installed successfully')"
 
 **Solution:**
 ```bash
-pip install "ibis-framework[duckdb]>=9.0.0"
+uv pip install "ibis-framework[duckdb]>=9.0.0"
 
 # Verify
-python -c "import ibis; print('Ibis installed')"
+uv run python -c "import ibis; print('Ibis installed')"
 ```
 
 ### Issue: Python version incompatibility
@@ -51,10 +48,9 @@ python -c "import ibis; print('Ibis installed')"
 python --version
 
 # If version is too old, install Python 3.11 or higher
-# Then recreate virtual environment
-python3.11 -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
+# Then recreate virtual environment with uv
+uv venv --python 3.11
+uv pip install -e ".[dev]"
 ```
 
 ## Configuration Issues
@@ -88,7 +84,7 @@ If file doesn't exist, create it.
 {
   "mcpServers": {
     "semantic-layer": {
-      "command": "/ABSOLUTE/PATH/TO/venv/bin/python",
+      "command": "/ABSOLUTE/PATH/TO/.venv/bin/python",
       "args": [
         "/ABSOLUTE/PATH/TO/src/mcp_server.py"
       ],
@@ -100,16 +96,18 @@ If file doesn't exist, create it.
 }
 ```
 
+**Note:** uv creates `.venv` (not `venv`)
+
 **3. Use Absolute Paths (Not Relative):**
 
 ❌ Wrong:
 ```json
-"command": "./venv/bin/python"
+"command": "./.venv/bin/python"
 ```
 
 ✅ Correct:
 ```json
-"command": "/Users/yourname/knowDB/venv/bin/python"
+"command": "/Users/yourname/knowDB/.venv/bin/python"
 ```
 
 **4. Restart Claude Desktop:**
@@ -565,23 +563,23 @@ For future enhancement, add COALESCE support in semantic layer.
 
 ```bash
 # Run all tests
-python -m pytest tests/ -v
+uv run pytest tests/ -v
 
 # Run specific test
-python -m pytest tests/test_semantic_layer.py::TestQueries::test_query_simple_metric -v
+uv run pytest tests/test_semantic_layer.py::TestQueries::test_query_simple_metric -v
 
 # Run with verbose output
-python -m pytest tests/ -v --tb=short
+uv run pytest tests/ -v --tb=short
 ```
 
 ### Manual Testing
 
 ```bash
 # Test semantic layer directly
-python src/semantic_layer.py
+uv run python src/semantic_layer.py
 
 # Test MCP server
-python src/mcp_server.py
+uv run python src/mcp_server.py
 # (Server will start and wait for Claude Desktop to connect)
 ```
 
@@ -622,7 +620,7 @@ Check terminal output or Claude Desktop console
 
 ```bash
 # Run diagnostics script
-python -c "
+uv run python -c "
 import sys
 print(f'Python: {sys.version}')
 

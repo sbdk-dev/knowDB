@@ -11,6 +11,7 @@
 ✅ **24/24 Tests Passing** - Comprehensive test coverage
 ✅ **Multi-Database Support** - DuckDB, Snowflake, BigQuery, PostgreSQL
 ✅ **Production Ready** - Ready to connect to your data warehouse
+⚡ **Powered by uv** - 10-100x faster than pip for package management
 
 ### 📚 Documentation
 

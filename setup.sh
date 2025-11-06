@@ -1,11 +1,11 @@
 #!/bin/bash
-# Setup script for Semantic Layer MCP Server
+# Setup script for Semantic Layer MCP Server (using uv)
 # This script automates the initial setup process
 
 set -e  # Exit on error
 
-echo "🚀 Semantic Layer MCP Server Setup"
-echo "===================================="
+echo "🚀 Semantic Layer MCP Server Setup (with uv)"
+echo "=============================================="
 echo ""
 
 # Colors for output
@@ -14,7 +14,21 @@ BLUE='\033[0;34m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
+# Check if uv is installed
+echo -e "${BLUE}Checking for uv...${NC}"
+if ! command -v uv &> /dev/null; then
+    echo -e "${YELLOW}⚠️  uv not found. Installing uv...${NC}"
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+    # Add to PATH for current session
+    export PATH="$HOME/.cargo/bin:$PATH"
+    echo -e "${GREEN}✓${NC} uv installed"
+else
+    UV_VERSION=$(uv --version)
+    echo -e "${GREEN}✓${NC} uv found: $UV_VERSION"
+fi
+
 # Check Python version
+echo ""
 echo -e "${BLUE}Checking Python version...${NC}"
 PYTHON_VERSION=$(python3 --version 2>&1 | awk '{print $2}' | cut -d. -f1,2)
 REQUIRED_VERSION="3.11"
@@ -26,42 +40,33 @@ if [ "$(printf '%s\n' "$REQUIRED_VERSION" "$PYTHON_VERSION" | sort -V | head -n1
 fi
 echo -e "${GREEN}✓${NC} Python $PYTHON_VERSION found"
 
-# Create virtual environment
-echo ""
-echo -e "${BLUE}Creating virtual environment...${NC}"
+# Remove old venv if exists
 if [ -d "venv" ]; then
-    echo -e "${YELLOW}⚠️  venv directory already exists${NC}"
-    read -p "   Delete and recreate? (y/N): " -n 1 -r
-    echo
-    if [[ $REPLY =~ ^[Yy]$ ]]; then
-        rm -rf venv
-        python3 -m venv venv
-        echo -e "${GREEN}✓${NC} Virtual environment recreated"
-    else
-        echo "   Using existing virtual environment"
-    fi
-else
-    python3 -m venv venv
-    echo -e "${GREEN}✓${NC} Virtual environment created"
+    echo ""
+    echo -e "${BLUE}Removing old venv directory...${NC}"
+    rm -rf venv
+    echo -e "${GREEN}✓${NC} Old venv removed"
 fi
 
-# Activate virtual environment
-echo ""
-echo -e "${BLUE}Activating virtual environment...${NC}"
-source venv/bin/activate
-echo -e "${GREEN}✓${NC} Virtual environment activated"
+# Remove old requirements.txt if exists (we use pyproject.toml now)
+if [ -f "requirements.txt" ]; then
+    echo ""
+    echo -e "${BLUE}Archiving old requirements.txt...${NC}"
+    mv requirements.txt requirements.txt.old
+    echo -e "${GREEN}✓${NC} Old requirements.txt archived"
+fi
 
-# Upgrade pip
+# Initialize uv project (creates .venv)
 echo ""
-echo -e "${BLUE}Upgrading pip...${NC}"
-pip install --upgrade pip --quiet
-echo -e "${GREEN}✓${NC} pip upgraded"
+echo -e "${BLUE}Initializing uv environment...${NC}"
+uv venv
+echo -e "${GREEN}✓${NC} Virtual environment created"
 
-# Install dependencies
+# Install dependencies with uv (much faster than pip!)
 echo ""
-echo -e "${BLUE}Installing dependencies...${NC}"
-echo "   This may take a few minutes..."
-pip install -r requirements.txt --quiet
+echo -e "${BLUE}Installing dependencies with uv...${NC}"
+echo "   This is much faster than pip! ⚡"
+uv pip install mcp ibis-framework[duckdb] pandas numpy duckdb pyyaml python-dotenv pydantic pytest pytest-asyncio black mypy
 echo -e "${GREEN}✓${NC} Dependencies installed"
 
 # Create data directory
@@ -73,13 +78,13 @@ echo -e "${GREEN}✓${NC} Data directory created"
 # Generate sample data
 echo ""
 echo -e "${BLUE}Generating sample data...${NC}"
-python create_sample_data.py
+uv run python create_sample_data.py
 echo -e "${GREEN}✓${NC} Sample data generated"
 
 # Run tests
 echo ""
 echo -e "${BLUE}Running tests...${NC}"
-python -m pytest tests/test_semantic_layer.py -v --tb=short
+uv run pytest tests/test_semantic_layer.py -v --tb=short
 if [ $? -eq 0 ]; then
     echo -e "${GREEN}✓${NC} All tests passed"
 else
@@ -89,15 +94,17 @@ fi
 
 # Get absolute paths
 CURRENT_DIR=$(pwd)
-PYTHON_PATH="$CURRENT_DIR/venv/bin/python"
+PYTHON_PATH="$CURRENT_DIR/.venv/bin/python"
 MCP_SERVER_PATH="$CURRENT_DIR/src/mcp_server.py"
 METRICS_PATH="$CURRENT_DIR/semantic_models/metrics.yml"
 
 # Show configuration
 echo ""
-echo "===================================="
+echo "=============================================="
 echo -e "${GREEN}✅ Setup Complete!${NC}"
-echo "===================================="
+echo "=============================================="
+echo ""
+echo -e "${BLUE}Using uv for fast Python package management ⚡${NC}"
 echo ""
 echo "Next steps:"
 echo ""
@@ -133,6 +140,12 @@ echo "4. Try asking Claude:"
 echo "   - \"What metrics are available?\""
 echo "   - \"Show me total MRR\""
 echo "   - \"Break down MRR by customer segment\""
+echo ""
+echo "Useful uv commands:"
+echo "   uv run python script.py    # Run a script"
+echo "   uv run pytest              # Run tests"
+echo "   uv pip install package     # Install a package"
+echo "   uv pip list                # List installed packages"
 echo ""
 echo "For more information:"
 echo "   - Quick Start: QUICKSTART.md"
