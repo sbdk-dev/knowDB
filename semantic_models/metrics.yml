@@ -1,0 +1,268 @@
+---
+# Semantic Model Configuration
+# This file defines metrics, dimensions, and data warehouse connection
+
+semantic_model:
+  name: "SaaS Metrics"
+  version: "1.0"
+  description: "Core SaaS business metrics for subscription analytics"
+
+  # Database Connection Configuration
+  connection:
+    type: "duckdb"  # Options: duckdb, snowflake, bigquery, postgres
+    database: "data/sample.duckdb"
+
+    # For Snowflake (uncomment and configure):
+    # type: "snowflake"
+    # user: "${SNOWFLAKE_USER}"
+    # password: "${SNOWFLAKE_PASSWORD}"
+    # account: "${SNOWFLAKE_ACCOUNT}"
+    # database: "${SNOWFLAKE_DATABASE}"
+    # warehouse: "${SNOWFLAKE_WAREHOUSE}"
+    # schema: "public"
+
+    # For BigQuery (uncomment and configure):
+    # type: "bigquery"
+    # project_id: "${GCP_PROJECT_ID}"
+    # dataset_id: "${BQ_DATASET_ID}"
+
+    # For PostgreSQL (uncomment and configure):
+    # type: "postgres"
+    # host: "${POSTGRES_HOST}"
+    # port: 5432
+    # database: "${POSTGRES_DATABASE}"
+    # user: "${POSTGRES_USER}"
+    # password: "${POSTGRES_PASSWORD}"
+
+  # Dimensions - How to slice and group metrics
+  dimensions:
+    - name: "customer_segment"
+      display_name: "Customer Segment"
+      description: "Customer tier (Enterprise, Mid-Market, SMB)"
+      type: "categorical"
+      table: "customers"
+      column: "customer_segment"
+
+    - name: "country"
+      display_name: "Country"
+      description: "Customer country"
+      type: "categorical"
+      table: "customers"
+      column: "country"
+
+    - name: "industry"
+      display_name: "Industry"
+      description: "Customer industry vertical"
+      type: "categorical"
+      table: "customers"
+      column: "industry"
+
+    - name: "billing_frequency"
+      display_name: "Billing Frequency"
+      description: "Monthly or Annual billing"
+      type: "categorical"
+      table: "subscriptions"
+      column: "billing_frequency"
+
+    - name: "product_tier"
+      display_name: "Product Tier"
+      description: "Product tier (basic, professional, enterprise)"
+      type: "categorical"
+      table: "subscriptions"
+      column: "product_tier"
+
+    - name: "subscription_status"
+      display_name: "Subscription Status"
+      description: "Status of subscription (active, cancelled, past_due)"
+      type: "categorical"
+      table: "subscriptions"
+      column: "subscription_status"
+
+  # Metrics - Business KPIs
+  metrics:
+    # Revenue Metrics
+    - name: "total_mrr"
+      display_name: "Monthly Recurring Revenue (MRR)"
+      description: "Total monthly recurring revenue from all active subscriptions"
+      type: "simple"
+      calculation:
+        table: "subscriptions"
+        aggregation: "sum"
+        column: "subscription_amount"
+        filters:
+          - "subscription_status = 'active'"
+          - "billing_frequency = 'monthly'"
+
+    - name: "arr"
+      display_name: "Annual Recurring Revenue (ARR)"
+      description: "Total annual recurring revenue (MRR * 12)"
+      type: "derived"
+      calculation:
+        formula: "total_mrr * 12"
+
+    - name: "total_revenue"
+      display_name: "Total Subscription Revenue"
+      description: "Sum of all subscription amounts (includes both monthly and annual)"
+      type: "simple"
+      calculation:
+        table: "subscriptions"
+        aggregation: "sum"
+        column: "subscription_amount"
+        filters:
+          - "subscription_status = 'active'"
+
+    - name: "average_subscription_value"
+      display_name: "Average Subscription Value"
+      description: "Average value per subscription"
+      type: "simple"
+      calculation:
+        table: "subscriptions"
+        aggregation: "avg"
+        column: "subscription_amount"
+        filters:
+          - "subscription_status = 'active'"
+
+    # Customer Metrics
+    - name: "total_customers"
+      display_name: "Total Customers"
+      description: "Count of all customers"
+      type: "simple"
+      calculation:
+        table: "customers"
+        aggregation: "count"
+        column: "customer_id"
+
+    - name: "active_customers"
+      display_name: "Active Customers"
+      description: "Customers with at least one active subscription"
+      type: "simple"
+      calculation:
+        table: "subscriptions"
+        aggregation: "count_distinct"
+        column: "customer_id"
+        filters:
+          - "subscription_status = 'active'"
+
+    # Subscription Metrics
+    - name: "total_subscriptions"
+      display_name: "Total Subscriptions"
+      description: "Count of all subscriptions"
+      type: "simple"
+      calculation:
+        table: "subscriptions"
+        aggregation: "count"
+        column: "subscription_id"
+
+    - name: "active_subscriptions"
+      display_name: "Active Subscriptions"
+      description: "Count of active subscriptions"
+      type: "simple"
+      calculation:
+        table: "subscriptions"
+        aggregation: "count"
+        column: "subscription_id"
+        filters:
+          - "subscription_status = 'active'"
+
+    - name: "cancelled_subscriptions"
+      display_name: "Cancelled Subscriptions"
+      description: "Count of cancelled subscriptions"
+      type: "simple"
+      calculation:
+        table: "subscriptions"
+        aggregation: "count"
+        column: "subscription_id"
+        filters:
+          - "subscription_status = 'cancelled'"
+
+    - name: "churn_rate"
+      display_name: "Churn Rate"
+      description: "Percentage of cancelled subscriptions"
+      type: "derived"
+      calculation:
+        formula: "(cancelled_subscriptions / total_subscriptions) * 100"
+
+    # Per-Customer Metrics
+    - name: "arpu"
+      display_name: "Average Revenue Per User (ARPU)"
+      description: "Average monthly revenue per active customer"
+      type: "derived"
+      calculation:
+        formula: "total_mrr / active_customers"
+
+    - name: "subscriptions_per_customer"
+      display_name: "Subscriptions Per Customer"
+      description: "Average number of subscriptions per customer"
+      type: "derived"
+      calculation:
+        formula: "active_subscriptions / active_customers"
+
+    # Growth Metrics (from monthly snapshots)
+    - name: "monthly_mrr"
+      display_name: "MRR by Month"
+      description: "Monthly recurring revenue tracked over time"
+      type: "simple"
+      calculation:
+        table: "monthly_mrr_snapshots"
+        aggregation: "sum"
+        column: "mrr"
+
+    - name: "monthly_customer_count"
+      display_name: "Customer Count by Month"
+      description: "Number of customers tracked over time"
+      type: "simple"
+      calculation:
+        table: "monthly_mrr_snapshots"
+        aggregation: "sum"
+        column: "customer_count"
+
+  # Canonical Datasets - Pre-defined datasets for common analyses
+  canonical_datasets:
+    - name: "customer_health"
+      display_name: "Customer Health Dashboard"
+      description: "Key metrics for monitoring customer health"
+      metrics:
+        - "total_mrr"
+        - "active_customers"
+        - "arpu"
+        - "churn_rate"
+      dimensions:
+        - "customer_segment"
+      refresh_schedule: "daily"
+
+    - name: "revenue_analysis"
+      display_name: "Revenue Analysis"
+      description: "Comprehensive revenue breakdown"
+      metrics:
+        - "total_mrr"
+        - "arr"
+        - "average_subscription_value"
+      dimensions:
+        - "customer_segment"
+        - "billing_frequency"
+        - "product_tier"
+      refresh_schedule: "daily"
+
+    - name: "subscription_metrics"
+      display_name: "Subscription Metrics"
+      description: "Subscription-level KPIs"
+      metrics:
+        - "active_subscriptions"
+        - "cancelled_subscriptions"
+        - "churn_rate"
+        - "subscriptions_per_customer"
+      dimensions:
+        - "subscription_status"
+        - "product_tier"
+      refresh_schedule: "daily"
+
+    - name: "growth_trends"
+      display_name: "Growth Trends"
+      description: "Historical growth metrics"
+      metrics:
+        - "monthly_mrr"
+        - "monthly_customer_count"
+      dimensions:
+        - "customer_segment"
+      time_dimension: "month"
+      refresh_schedule: "weekly"
