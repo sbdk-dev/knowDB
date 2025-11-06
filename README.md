@@ -60,31 +60,49 @@ Your Warehouse (Snowflake, BigQuery, DuckDB, etc.)
 
 ---
 
-## Quick Start (30 Minutes)
+## Quick Start (5 Minutes with uv!)
 
-### 1. Install Dependencies
+### 1. Automated Setup (Recommended)
 
 ```bash
 # Clone this repo
 git clone https://github.com/your-org/knowDB
 cd knowDB
 
-# Setup
-python -m venv venv
-source venv/bin/activate
-pip install -r requirements.txt
+# One-command setup (installs uv automatically if needed)
+./setup.sh
 
-# Create sample database
-python create_sample_data.py
+# That's it! The script will:
+# - Install uv (10-100x faster than pip)
+# - Create virtual environment
+# - Install all dependencies
+# - Generate sample data
+# - Run all tests
 ```
 
-### 2. Define Your Metrics
+### 2. Manual Setup (if you prefer)
+
+```bash
+# Install uv (if not already installed)
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# Create virtual environment with uv
+uv venv
+
+# Install dependencies (much faster than pip!)
+uv pip install mcp ibis-framework[duckdb] pandas numpy duckdb pyyaml python-dotenv pydantic pytest
+
+# Create sample database
+uv run python create_sample_data.py
+```
+
+### 3. Define Your Metrics
+
+Metrics are already defined in `semantic_models/metrics.yml`:
 
 ```yaml
-# semantic_models/metrics.yml
-
 metrics:
-  - name: mrr
+  - name: total_mrr
     display_name: Monthly Recurring Revenue
     description: Total monthly recurring revenue from active subscriptions
     calculation:
@@ -93,12 +111,7 @@ metrics:
       table: subscriptions
       filters:
         - "subscription_status = 'active'"
-```
-
-### 3. Start MCP Server
-
-```bash
-python src/mcp_server.py
+        - "billing_frequency = 'monthly'"
 ```
 
 ### 4. Configure Claude Desktop
@@ -109,24 +122,40 @@ python src/mcp_server.py
 {
   "mcpServers": {
     "semantic-layer": {
-      "command": "/path/to/venv/bin/python",
-      "args": ["/path/to/src/mcp_server.py"]
+      "command": "/absolute/path/to/knowDB/.venv/bin/python",
+      "args": ["/absolute/path/to/knowDB/src/mcp_server.py"],
+      "env": {
+        "SEMANTIC_MODELS_PATH": "/absolute/path/to/knowDB/semantic_models/metrics.yml"
+      }
     }
   }
 }
 ```
 
-### 5. Ask Claude Questions!
+**Important:** Replace `/absolute/path/to/knowDB` with your actual path. Get it with `pwd` in your knowDB directory.
+
+### 5. Restart Claude Desktop & Ask Questions!
 
 ```
-You: What's our MRR?
-Claude: $45,000
-
-You: Show me by customer segment
-Claude: Enterprise: $20k, Mid-Market: $15k, SMB: $10k
-
 You: What metrics are available?
-Claude: [Lists all 7 metrics with descriptions]
+Claude: [Lists all 14 metrics with descriptions]
+
+You: What's our total MRR?
+Claude: $48,670.00
+
+You: Show me MRR by customer segment
+Claude:
+| Segment    | MRR        |
+|------------|------------|
+| Enterprise | $24,741.53 |
+| Mid-Market | $18,464.34 |
+| SMB        | $5,464.12  |
+
+You: What's the churn rate?
+Claude: 9.6%
+```
+
+**See [QUICKSTART.md](QUICKSTART.md) for detailed setup instructions.**
 ```
 
 **🎉 That's it! You have an AI data analyst.**
