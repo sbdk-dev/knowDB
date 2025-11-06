@@ -245,7 +245,7 @@ if __name__ == "__main__":
 {
   "mcpServers": {
     "data-modeling-agent": {
-      "command": "/path/to/venv/bin/python",
+      "command": "/path/to/.venv/bin/python",
       "args": ["/path/to/mcp_data_modeling_server.py"],
       "env": {
         "DBT_PROJECT_DIR": "/path/to/dbt_project",

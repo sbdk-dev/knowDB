@@ -24,7 +24,8 @@ DuckDB / Your Warehouse
 
 ### Required
 - ✅ Claude Desktop installed
-- ✅ Python 3.10+ installed
+- ✅ Python 3.11+ installed
+- ✅ `uv` (will install automatically if not present - 10-100x faster than pip!)
 - ✅ Basic familiarity with Python
 - ✅ A data warehouse (we'll start with DuckDB for simplicity)
 
@@ -32,6 +33,8 @@ DuckDB / Your Warehouse
 - dbt project (we'll help you create one)
 - Existing semantic layer definitions
 - Production warehouse (Snowflake/BigQuery)
+
+> **Note:** This guide uses `uv`, a modern Python package manager that's 10-100x faster than pip. The setup script will install it automatically if you don't have it.
 
 ---
 
@@ -57,35 +60,28 @@ mkdir -p {src,data,semantic_models,tests}
 # │   └── metrics.yml            # Metric definitions
 # ├── tests/
 # │   └── test_queries.py        # Test queries
-# ├── requirements.txt           # Python dependencies
+# ├── pyproject.toml             # Python package configuration (modern)
 # └── README.md                  # Setup instructions
 ```
 
 ### Step 2: Install Dependencies
 
 ```bash
-# Create requirements.txt
-cat > requirements.txt <<EOF
-# MCP SDK
-mcp>=0.9.0
+# Install uv if not already installed (optional - setup.sh does this automatically)
+curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# Data libraries
-ibis-framework[duckdb]>=9.0.0
-pandas>=2.0.0
-pyyaml>=6.0
+# Create virtual environment with uv (10-100x faster than pip!)
+uv venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 
-# Utilities
-python-dotenv>=1.0.0
-pydantic>=2.0.0
-EOF
+# Install dependencies directly with uv
+uv pip install mcp ibis-framework[duckdb] pandas numpy duckdb pyyaml python-dotenv pydantic pytest pytest-asyncio black mypy
 
-# Create virtual environment
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install dependencies
-pip install -r requirements.txt
+# Or use the automated setup script (recommended):
+# ./setup.sh
 ```
+
+> **Why uv?** It's 10-100x faster than pip, has better dependency resolution, and is the modern Python package manager from the creators of ruff.
 
 ### Step 3: Create Sample Database
 
@@ -606,7 +602,7 @@ cat > ~/Library/Application\ Support/Claude/claude_desktop_config.json <<EOF
 {
   "mcpServers": {
     "semantic-layer": {
-      "command": "/absolute/path/to/semantic-layer-mcp/venv/bin/python",
+      "command": "/absolute/path/to/semantic-layer-mcp/.venv/bin/python",
       "args": ["/absolute/path/to/semantic-layer-mcp/src/mcp_server.py"]
     }
   }
@@ -828,15 +824,15 @@ def suggest_metrics():
 cat ~/Library/Application\ Support/Claude/claude_desktop_config.json
 
 # 2. Are paths absolute (not relative)?
-# ❌ Wrong: "venv/bin/python"
-# ✅ Right: "/Users/you/semantic-layer-mcp/venv/bin/python"
+# ❌ Wrong: ".venv/bin/python"
+# ✅ Right: "/Users/you/semantic-layer-mcp/.venv/bin/python"
 
 # 3. Is the Python script executable?
 chmod +x src/mcp_server.py
 
 # 4. Test the MCP server directly
 cd /path/to/semantic-layer-mcp
-source venv/bin/activate
+source .venv/bin/activate
 python src/mcp_server.py
 # Should start without errors
 ```
@@ -917,7 +913,7 @@ SNOWFLAKE_WAREHOUSE=ANALYTICS_WH
 
 ### .gitignore
 ```
-venv/
+.venv/
 __pycache__/
 *.pyc
 .env
