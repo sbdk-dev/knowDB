@@ -449,7 +449,9 @@ class SemanticLayer:
         Execute query for derived metric (calculated from other metrics)
 
         Derived metrics are calculated using a formula that references other metrics.
-        For example: customer_ltv = mrr / churn_rate * 12
+        For example: arpc = mrr / customer_count
+
+        Week 1 Implementation: Basic formula support for division/multiplication of simple metrics
         """
         calc = metric['calculation']
         formula = calc.get('formula')
@@ -457,13 +459,72 @@ class SemanticLayer:
         if not formula:
             raise SemanticLayerError(f"Derived metric '{metric['name']}' missing formula")
 
-        # Parse formula to find component metrics
-        # This is a simplified implementation - production would need proper formula parsing
-        logger.warning("Derived metrics are not yet fully implemented")
-        raise SemanticLayerError(
-            f"Derived metric '{metric['name']}' requires component metrics. "
-            "Derived metrics are not yet fully supported."
-        )
+        # Parse formula to find component metrics (simple implementation)
+        # Support basic operations: +, -, *, /
+        import re
+
+        # Extract metric names from formula (assuming they're valid Python identifiers)
+        component_metric_names = re.findall(r'\b([a-z_]+)\b', formula)
+
+        # Remove duplicates and filter out numbers
+        component_metric_names = [m for m in set(component_metric_names)
+                                   if not m.replace('_', '').isdigit()]
+
+        logger.info(f"Derived metric '{metric['name']}' uses components: {component_metric_names}")
+
+        # Query each component metric
+        component_data = {}
+        for comp_name in component_metric_names:
+            try:
+                comp_metric = self.get_metric(comp_name)
+                comp_result, _ = self._query_simple_metric(
+                    comp_metric, dimensions, filters, limit, order_by
+                )
+                component_data[comp_name] = comp_result
+            except Exception as e:
+                logger.warning(f"Could not query component metric '{comp_name}': {e}")
+                # Component might not be a metric, could be a constant or function
+                pass
+
+        if not component_data:
+            raise SemanticLayerError(
+                f"Derived metric '{metric['name']}' references no queryable metrics"
+            )
+
+        # Combine results using pandas
+        import pandas as pd
+
+        # Start with first component
+        result_df = component_data[list(component_data.keys())[0]]
+
+        # Merge in other components
+        for comp_name, comp_df in list(component_data.items())[1:]:
+            if dimensions:
+                result_df = result_df.merge(comp_df, on=dimensions, how='outer')
+            else:
+                # Scalar values - just combine
+                for col in comp_df.columns:
+                    if col not in result_df.columns:
+                        result_df[col] = comp_df[col].iloc[0] if len(comp_df) > 0 else 0
+
+        # Evaluate formula
+        # Create namespace with component metric values
+        namespace = {}
+        for col in result_df.columns:
+            if col not in dimensions if dimensions else True:
+                namespace[col] = result_df[col]
+
+        try:
+            # Evaluate formula safely
+            result_df[metric['name']] = eval(formula, {"__builtins__": {}}, namespace)
+        except Exception as e:
+            raise SemanticLayerError(f"Error evaluating formula '{formula}': {e}")
+
+        # Build SQL representation (simplified)
+        sql = f"-- Derived metric: {metric['name']}\n-- Formula: {formula}\n"
+        sql += "-- Computed from component metrics"
+
+        return result_df, sql
 
     def explain_metric(self, metric_name: str) -> str:
         """

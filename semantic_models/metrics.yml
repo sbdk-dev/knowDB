@@ -10,7 +10,7 @@ semantic_model:
   # Database Connection Configuration
   connection:
     type: "duckdb"  # Options: duckdb, snowflake, bigquery, postgres
-    database: "data/sample.duckdb"
+    database: "/Users/mattstrautmann/Documents/github/knowDB/data/sample.duckdb"
 
     # For Snowflake (uncomment and configure):
     # type: "snowflake"
@@ -215,6 +215,63 @@ semantic_model:
         table: "monthly_mrr_snapshots"
         aggregation: "sum"
         column: "customer_count"
+
+    # Advanced Business Metrics (Week 1 Extension)
+    - name: "customer_ltv"
+      display_name: "Customer Lifetime Value (LTV)"
+      description: "Estimated lifetime value of a customer (simplified: ARPU / churn_rate * 12)"
+      type: "derived"
+      calculation:
+        formula: "(total_mrr / active_customers) / ((cancelled_subscriptions / total_subscriptions) / 100) * 12"
+
+    - name: "revenue_per_subscription"
+      display_name: "Revenue Per Subscription"
+      description: "Average revenue per active subscription"
+      type: "derived"
+      calculation:
+        formula: "total_mrr / active_subscriptions"
+
+    - name: "enterprise_mrr"
+      display_name: "Enterprise MRR"
+      description: "MRR from enterprise segment customers"
+      type: "simple"
+      calculation:
+        table: "subscriptions"
+        aggregation: "sum"
+        column: "subscription_amount"
+        filters:
+          - "subscription_status = 'active'"
+          - "billing_frequency = 'monthly'"
+          # Note: Will need to join with customers table for segment filter
+
+    - name: "smb_mrr"
+      display_name: "SMB MRR"
+      description: "MRR from SMB segment customers"
+      type: "simple"
+      calculation:
+        table: "subscriptions"
+        aggregation: "sum"
+        column: "subscription_amount"
+        filters:
+          - "subscription_status = 'active'"
+          - "billing_frequency = 'monthly'"
+          # Note: Will need to join with customers table for segment filter
+
+    - name: "activation_rate"
+      display_name: "Activation Rate"
+      description: "Percentage of customers with active subscriptions"
+      type: "derived"
+      calculation:
+        formula: "(active_customers / total_customers) * 100"
+
+    - name: "average_customer_age_days"
+      display_name: "Average Customer Age (Days)"
+      description: "Average number of days since customer signup"
+      type: "simple"
+      calculation:
+        table: "customers"
+        aggregation: "avg"
+        column: "CAST(julianday('now') - julianday(signup_date) AS INTEGER)"
 
   # Canonical Datasets - Pre-defined datasets for common analyses
   canonical_datasets:
