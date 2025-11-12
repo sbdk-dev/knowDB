@@ -1,0 +1,14 @@
+{
+  "name": "knowdb-dashboards",
+  "version": "1.0.0",
+  "description": "Evidence.dev dashboards for knowDB semantic layer",
+  "scripts": {
+    "dev": "evidence dev",
+    "build": "evidence build",
+    "sources": "evidence sources"
+  },
+  "dependencies": {
+    "@evidence-dev/evidence": "^28.0.0",
+    "@evidence-dev/duckdb": "^2.0.0"
+  }
+}

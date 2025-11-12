@@ -10,7 +10,7 @@ semantic_model:
   # Database Connection Configuration
   connection:
     type: "duckdb"  # Options: duckdb, snowflake, bigquery, postgres
-    database: "/Users/mattstrautmann/Documents/github/knowDB/data/sample.duckdb"
+    database: "data/sample.duckdb"  # Use relative path, override with DATABASE_PATH env var
 
     # For Snowflake (uncomment and configure):
     # type: "snowflake"
@@ -36,6 +36,56 @@ semantic_model:
 
   # Dimensions - How to slice and group metrics
   dimensions:
+    # Temporal Dimensions - Time-based grouping for trend analysis
+    - name: "snapshot_month"
+      display_name: "Snapshot Month"
+      description: "Month of the snapshot for time-series analysis (YYYY-MM)"
+      type: "temporal"
+      table: "monthly_mrr_snapshots"
+      column: "month"
+      sql: "strftime('%Y-%m', {{ Table }}.month)"
+
+    - name: "snapshot_year"
+      display_name: "Snapshot Year"
+      description: "Year of the snapshot for annual analysis"
+      type: "temporal"
+      table: "monthly_mrr_snapshots"
+      column: "month"
+      sql: "strftime('%Y', {{ Table }}.month)"
+
+    - name: "snapshot_quarter"
+      display_name: "Snapshot Quarter"
+      description: "Quarter of the snapshot (YYYY-Q#)"
+      type: "temporal"
+      table: "monthly_mrr_snapshots"
+      column: "month"
+      sql: "strftime('%Y', {{ Table }}.month) || '-Q' || CAST((CAST(strftime('%m', {{ Table }}.month) AS INTEGER) + 2) / 3 AS TEXT)"
+
+    - name: "customer_signup_month"
+      display_name: "Customer Signup Month"
+      description: "Month when customer signed up (for cohort analysis)"
+      type: "temporal"
+      table: "customers"
+      column: "signup_date"
+      sql: "strftime('%Y-%m', {{ Table }}.signup_date)"
+
+    - name: "customer_signup_year"
+      display_name: "Customer Signup Year"
+      description: "Year when customer signed up"
+      type: "temporal"
+      table: "customers"
+      column: "signup_date"
+      sql: "strftime('%Y', {{ Table }}.signup_date)"
+
+    - name: "subscription_start_month"
+      display_name: "Subscription Start Month"
+      description: "Month when subscription started"
+      type: "temporal"
+      table: "subscriptions"
+      column: "start_date"
+      sql: "strftime('%Y-%m', {{ Table }}.start_date)"
+
+    # Categorical Dimensions
     - name: "customer_segment"
       display_name: "Customer Segment"
       description: "Customer tier (Enterprise, Mid-Market, SMB)"
@@ -315,11 +365,12 @@ semantic_model:
 
     - name: "growth_trends"
       display_name: "Growth Trends"
-      description: "Historical growth metrics"
+      description: "Historical growth metrics over time"
       metrics:
         - "monthly_mrr"
         - "monthly_customer_count"
       dimensions:
+        - "snapshot_month"
         - "customer_segment"
-      time_dimension: "month"
+      time_dimension: "snapshot_month"
       refresh_schedule: "weekly"
