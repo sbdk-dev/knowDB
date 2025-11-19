@@ -1,0 +1,361 @@
+[build-system]
+requires = ["setuptools>=65.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "knowdb"
+version = "0.2.0"
+description = "AI semantic layer extending sbdk-dev - Natural language analytics with RAG-powered metric discovery"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    {name = "KnowDB Team", email = "hello@knowdb.dev"}
+]
+maintainers = [
+    {name = "KnowDB Team", email = "hello@knowdb.dev"}
+]
+keywords = [
+    "analytics",
+    "semantic-layer",
+    "ai-analyst",
+    "mcp",
+    "local-first",
+    "business-intelligence",
+    "rag",
+    "natural-language-query",
+    "ibis",
+    "metrics",
+    "agentic",
+    "claude-desktop"
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Framework :: Pydantic",
+    "Framework :: Pydantic :: 2",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Information Technology",
+    "License :: OSI Approved :: MIT License",
+    "Natural Language :: English",
+    "Operating System :: OS Independent",
+    "Operating System :: MacOS",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: SQL",
+    "Topic :: Database",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Scientific/Engineering :: Information Analysis",
+    "Typing :: Typed"
+]
+requires-python = ">=3.11"
+dependencies = [
+    # Core foundation - sbdk provides dlt, dbt, duckdb, typer, rich, pandas, pydantic, pyyaml, httpx
+    "sbdk-dev @ file:///${PROJECT_ROOT}/../sbdk-dev",
+
+    # Semantic Layer - query abstraction over databases
+    "ibis-framework[duckdb]>=6.0.0",
+
+    # MCP Server - Claude Desktop integration
+    "fastmcp>=0.1.0",
+
+    # Statistical Analysis - for metric calculations
+    "scipy>=1.11.0",
+    "numpy>=1.24.0",
+
+    # RAG & Embeddings - metric discovery
+    "sentence-transformers>=2.2.0",
+
+    # Caching - query result caching
+    "diskcache>=5.6.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    # Testing
+    "pytest>=8.0.0",
+    "pytest-cov>=4.1.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-xdist>=3.5.0",
+    "pytest-timeout>=2.2.0",
+    "pytest-randomly>=3.15.0",
+    "coverage>=7.4.0",
+    "hypothesis>=6.100.0",
+
+    # Type Checking
+    "mypy>=1.8.0",
+    "types-PyYAML>=6.0.0",
+    "types-requests>=2.31.0",
+    "pandas-stubs>=2.0.0",
+
+    # Linting & Formatting
+    "ruff>=0.3.0",
+    "black>=24.0.0",
+
+    # Pre-commit
+    "pre-commit>=3.6.0",
+]
+
+test = [
+    "pytest>=8.0.0",
+    "pytest-cov>=4.1.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-xdist>=3.5.0",
+    "pytest-timeout>=2.2.0",
+    "pytest-randomly>=3.15.0",
+    "coverage>=7.4.0",
+    "hypothesis>=6.100.0",
+]
+
+docs = [
+    "mkdocs>=1.5.0",
+    "mkdocs-material>=9.5.0",
+    "mkdocstrings[python]>=0.24.0",
+]
+
+# Database adapters
+snowflake = [
+    "ibis-framework[snowflake]>=6.0.0",
+    "snowflake-connector-python>=3.6.0",
+]
+
+bigquery = [
+    "ibis-framework[bigquery]>=6.0.0",
+    "google-cloud-bigquery>=3.14.0",
+]
+
+postgres = [
+    "ibis-framework[postgres]>=6.0.0",
+    "psycopg2-binary>=2.9.0",
+]
+
+# All database adapters
+all-databases = [
+    "knowdb[snowflake]",
+    "knowdb[bigquery]",
+    "knowdb[postgres]",
+]
+
+[project.urls]
+Homepage = "https://knowdb.dev"
+Documentation = "https://docs.knowdb.dev"
+Repository = "https://github.com/knowdb/knowdb"
+"Bug Tracker" = "https://github.com/knowdb/knowdb/issues"
+Changelog = "https://github.com/knowdb/knowdb/blob/main/CHANGELOG.md"
+
+[project.scripts]
+knowdb = "knowdb.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["knowdb*"]
+exclude = ["tests*", "docs*", "examples*"]
+
+[tool.setuptools.package-data]
+knowdb = [
+    "templates/**/*",
+    "*.yml",
+    "*.yaml",
+    "*.json",
+    "*.sql"
+]
+
+# Black formatting configuration
+[tool.black]
+line-length = 100
+target-version = ['py311', 'py312', 'py313']
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+  | __pycache__
+)/
+'''
+
+# Ruff linting configuration
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # pyflakes
+    "I",      # isort
+    "N",      # pep8-naming
+    "UP",     # pyupgrade
+    "B",      # flake8-bugbear
+    "A",      # flake8-builtins
+    "C4",     # flake8-comprehensions
+    "T10",    # flake8-debugger
+    "SIM",    # flake8-simplify
+    "ARG",    # flake8-unused-arguments
+    "PTH",    # flake8-use-pathlib
+    "ERA",    # eradicate (commented-out code)
+    "PD",     # pandas-vet
+    "PL",     # pylint
+    "RUF",    # ruff-specific rules
+]
+ignore = [
+    "E501",   # line too long (handled by black)
+    "B008",   # function calls in argument defaults (typer uses this)
+    "B905",   # zip without explicit strict
+    "PLR0913", # too many arguments
+    "PLR2004", # magic value comparison
+    "PD901",  # df is a bad variable name
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401", "E402"]
+"tests/**/*.py" = ["ARG001", "PLR2004", "S101"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["knowdb"]
+force-single-line = false
+force-sort-within-sections = true
+
+# MyPy type checking configuration
+[tool.mypy]
+python_version = "3.11"
+strict = true
+warn_return_any = true
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+check_untyped_defs = true
+disallow_untyped_defs = true
+disallow_incomplete_defs = true
+disallow_any_generics = true
+no_implicit_optional = true
+strict_equality = true
+warn_unreachable = true
+show_error_codes = true
+show_column_numbers = true
+
+[[tool.mypy.overrides]]
+module = [
+    "duckdb.*",
+    "ibis.*",
+    "sentence_transformers.*",
+    "scipy.*",
+    "fastmcp.*",
+    "diskcache.*",
+    "hypothesis.*",
+    "sbdk.*",
+    "dlt.*",
+    "dbt.*",
+]
+ignore_missing_imports = true
+
+# Pytest configuration
+[tool.pytest.ini_options]
+minversion = "8.0"
+asyncio_mode = "auto"
+testpaths = ["tests"]
+addopts = [
+    "-ra",
+    "-q",
+    "--strict-markers",
+    "--strict-config",
+    "--cov=src/knowdb",
+    "--cov-report=term-missing",
+    "--cov-report=html:htmlcov",
+    "--cov-report=xml:coverage.xml",
+    "--cov-fail-under=90",
+    "--tb=short",
+    "--durations=10",
+]
+filterwarnings = [
+    "error",
+    "ignore::UserWarning",
+    "ignore::DeprecationWarning",
+    "ignore::PendingDeprecationWarning",
+]
+markers = [
+    "unit: marks tests as unit tests (fast, isolated)",
+    "integration: marks tests as integration tests (may use databases)",
+    "e2e: marks tests as end-to-end tests (full workflow)",
+    "slow: marks tests as slow (deselect with '-m \"not slow\"')",
+    "performance: marks tests as performance benchmarks",
+    "mcp: marks tests that require MCP server",
+    "database: marks tests that require database connection",
+]
+# Timeout for individual tests (seconds)
+timeout = 60
+# Random order seed
+randomly_seed = "last"
+
+# Coverage configuration
+[tool.coverage.run]
+source = ["src/knowdb"]
+branch = true
+parallel = true
+omit = [
+    "*/tests/*",
+    "*/__pycache__/*",
+    "*/conftest.py",
+]
+
+[tool.coverage.paths]
+source = [
+    "src/knowdb",
+    "*/site-packages/knowdb",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "def __str__",
+    "if self.debug:",
+    "if settings.DEBUG",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if 0:",
+    "if __name__ == .__main__.:",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+    "except ImportError:",
+    "except ModuleNotFoundError:",
+    "if TYPE_CHECKING:",
+]
+show_missing = true
+precision = 2
+fail_under = 90
+
+[tool.coverage.html]
+directory = "htmlcov"
+
+[tool.coverage.xml]
+output = "coverage.xml"
+
+# Dependency groups (PEP 735)
+[dependency-groups]
+dev = [
+    "pytest>=8.0.0",
+    "pytest-cov>=4.1.0",
+    "pytest-asyncio>=0.23.0",
+    "pytest-xdist>=3.5.0",
+    "pytest-timeout>=2.2.0",
+    "pytest-randomly>=3.15.0",
+    "coverage>=7.4.0",
+    "hypothesis>=6.100.0",
+    "mypy>=1.8.0",
+    "ruff>=0.3.0",
+    "black>=24.0.0",
+    "pre-commit>=3.6.0",
+]

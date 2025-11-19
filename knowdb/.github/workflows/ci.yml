@@ -1,0 +1,393 @@
+# KnowDB Continuous Integration Pipeline
+#
+# This workflow provides comprehensive CI/CD for the KnowDB platform:
+# - Multi-Python version testing (3.10, 3.11, 3.12, 3.13)
+# - Multi-platform testing (Ubuntu, macOS)
+# - Code quality checks (linting, type checking)
+# - Test coverage enforcement (90%+ required)
+# - Security scanning
+# - Performance benchmarks
+#
+# Triggers:
+# - Push to main/develop branches
+# - All pull requests
+# - Daily scheduled runs for security updates
+
+name: CI
+
+on:
+  push:
+    branches: [main, develop, "feature/**"]
+  pull_request:
+    branches: [main, develop]
+  schedule:
+    # Run daily at 6 AM UTC for security scanning
+    - cron: "0 6 * * *"
+  workflow_dispatch:
+    inputs:
+      debug_enabled:
+        type: boolean
+        description: "Run with debug logging"
+        required: false
+        default: false
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION_DEFAULT: "3.11"
+  COVERAGE_THRESHOLD: 90
+  UV_CACHE_DIR: /tmp/.uv-cache
+
+jobs:
+  # ===========================================================================
+  # Quality Checks
+  # ===========================================================================
+
+  lint:
+    name: Lint & Format
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+          cache-dependency-glob: "pyproject.toml"
+
+      - name: Set up Python
+        run: uv python install ${{ env.PYTHON_VERSION_DEFAULT }}
+
+      - name: Install dependencies
+        run: uv sync --extra dev
+
+      - name: Check formatting with Black
+        run: uv run black --check --diff src tests
+
+      - name: Lint with Ruff
+        run: |
+          uv run ruff check src tests
+          uv run ruff format --check src tests
+
+      - name: Check import sorting
+        run: uv run ruff check --select I src tests
+
+  type-check:
+    name: Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+          cache-dependency-glob: "pyproject.toml"
+
+      - name: Set up Python
+        run: uv python install ${{ env.PYTHON_VERSION_DEFAULT }}
+
+      - name: Install dependencies
+        run: uv sync --extra dev
+
+      - name: Run mypy
+        run: uv run mypy src --strict
+
+  # ===========================================================================
+  # Test Matrix
+  # ===========================================================================
+
+  test:
+    name: Test Python ${{ matrix.python-version }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    needs: [lint, type-check]
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+        exclude:
+          # Skip Python 3.13 on macOS until stable
+          - os: macos-latest
+            python-version: "3.13"
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+          cache-dependency-glob: "pyproject.toml"
+
+      - name: Set up Python ${{ matrix.python-version }}
+        run: uv python install ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: uv sync --extra test
+
+      - name: Run unit tests
+        run: |
+          uv run pytest tests/unit \
+            -v \
+            --tb=short \
+            -m "unit" \
+            --cov=src/knowdb \
+            --cov-report=xml:coverage-unit.xml \
+            --junitxml=junit-unit.xml
+
+      - name: Run integration tests
+        run: |
+          uv run pytest tests/integration \
+            -v \
+            --tb=short \
+            -m "integration" \
+            --cov=src/knowdb \
+            --cov-append \
+            --cov-report=xml:coverage-integration.xml \
+            --junitxml=junit-integration.xml
+
+      - name: Run e2e tests
+        run: |
+          uv run pytest tests/e2e \
+            -v \
+            --tb=short \
+            -m "e2e" \
+            --cov=src/knowdb \
+            --cov-append \
+            --cov-report=xml:coverage-e2e.xml \
+            --junitxml=junit-e2e.xml
+
+      - name: Generate coverage report
+        run: |
+          uv run coverage combine || true
+          uv run coverage report --fail-under=${{ env.COVERAGE_THRESHOLD }}
+          uv run coverage xml -o coverage.xml
+
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v4
+        if: matrix.python-version == env.PYTHON_VERSION_DEFAULT && matrix.os == 'ubuntu-latest'
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: ./coverage.xml
+          flags: unittests
+          name: codecov-knowdb
+          fail_ci_if_error: false
+          verbose: true
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-${{ matrix.os }}-py${{ matrix.python-version }}
+          path: |
+            junit-*.xml
+            coverage*.xml
+            htmlcov/
+
+  # ===========================================================================
+  # Performance Tests
+  # ===========================================================================
+
+  performance:
+    name: Performance Benchmarks
+    runs-on: ubuntu-latest
+    needs: [test]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+          cache-dependency-glob: "pyproject.toml"
+
+      - name: Set up Python
+        run: uv python install ${{ env.PYTHON_VERSION_DEFAULT }}
+
+      - name: Install dependencies
+        run: uv sync --extra test
+
+      - name: Run performance tests
+        run: |
+          uv run pytest tests \
+            -v \
+            -m "performance" \
+            --tb=short \
+            --durations=20 \
+            --benchmark-autosave \
+            --benchmark-json=benchmark.json \
+            || true
+
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results
+          path: benchmark.json
+
+  # ===========================================================================
+  # Security Scanning
+  # ===========================================================================
+
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: [lint]
+    permissions:
+      security-events: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+          cache-dependency-glob: "pyproject.toml"
+
+      - name: Set up Python
+        run: uv python install ${{ env.PYTHON_VERSION_DEFAULT }}
+
+      - name: Install dependencies
+        run: uv sync --extra dev
+
+      - name: Run Bandit security scan
+        run: |
+          uv pip install bandit[toml]
+          uv run bandit -r src -f json -o bandit-report.json || true
+          uv run bandit -r src -f txt
+
+      - name: Check for known vulnerabilities
+        run: |
+          uv pip install safety
+          uv run safety check --json --output safety-report.json || true
+          uv run safety check
+
+      - name: Upload security reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: security-reports
+          path: |
+            bandit-report.json
+            safety-report.json
+
+  # ===========================================================================
+  # Documentation Build
+  # ===========================================================================
+
+  docs:
+    name: Build Documentation
+    runs-on: ubuntu-latest
+    needs: [lint]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+          cache-dependency-glob: "pyproject.toml"
+
+      - name: Set up Python
+        run: uv python install ${{ env.PYTHON_VERSION_DEFAULT }}
+
+      - name: Install dependencies
+        run: uv sync --extra docs
+
+      - name: Build documentation
+        run: |
+          cd docs
+          uv run mkdocs build --strict
+
+      - name: Upload documentation
+        uses: actions/upload-artifact@v4
+        with:
+          name: documentation
+          path: docs/site/
+
+  # ===========================================================================
+  # Release Check
+  # ===========================================================================
+
+  release-check:
+    name: Release Readiness
+    runs-on: ubuntu-latest
+    needs: [test, security, docs]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+          cache-dependency-glob: "pyproject.toml"
+
+      - name: Set up Python
+        run: uv python install ${{ env.PYTHON_VERSION_DEFAULT }}
+
+      - name: Install build tools
+        run: |
+          uv pip install build twine
+
+      - name: Build package
+        run: |
+          python -m build
+          ls -la dist/
+
+      - name: Check package
+        run: |
+          twine check dist/*
+
+      - name: Verify package can be installed
+        run: |
+          uv pip install dist/*.whl
+          uv run python -c "import knowdb; print(f'KnowDB version: {knowdb.__version__}')"
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-artifacts
+          path: dist/
+
+  # ===========================================================================
+  # Summary
+  # ===========================================================================
+
+  ci-summary:
+    name: CI Summary
+    runs-on: ubuntu-latest
+    needs: [test, security, docs]
+    if: always()
+
+    steps:
+      - name: Check all jobs
+        uses: re-actors/alls-green@release/v1
+        with:
+          jobs: ${{ toJSON(needs) }}
+
+      - name: CI Status
+        run: |
+          echo "## CI Pipeline Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| Job | Status |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----|--------|" >> $GITHUB_STEP_SUMMARY
+          echo "| Tests | ${{ needs.test.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Security | ${{ needs.security.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Docs | ${{ needs.docs.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Coverage threshold: **${{ env.COVERAGE_THRESHOLD }}%**" >> $GITHUB_STEP_SUMMARY
