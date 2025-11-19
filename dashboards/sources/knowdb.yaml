@@ -1,3 +1,0 @@
-name: knowdb
-type: duckdb
-filename: ../data/sample.duckdb
