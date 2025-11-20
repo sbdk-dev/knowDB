@@ -1,0 +1,36 @@
+{
+  "mcpServers": {
+    "memory": {
+      "command": "node",
+      "args": ["/path/to/mcp-standards/dist/index.js"]
+    },
+    "agentic-flow": {
+      "command": "npx",
+      "args": ["-y", "agentic-flow", "mcp"],
+      "env": {
+        "GEMINI_API_KEY": "${GEMINI_API_KEY}",
+        "DEFAULT_MODEL": "gemini-1.5-flash",
+        "SHOW_MODEL_USAGE": "true",
+        "SHOW_COST_SAVINGS": "true",
+        "LOG_LEVEL": "info"
+      }
+    },
+    "semantic-layer": {
+      "command": "uv",
+      "args": ["run", "python", "src/mcp_server.py"],
+      "cwd": "/path/to/knowDB",
+      "env": {
+        "SEMANTIC_MODELS_PATH": "/path/to/semantic_models/metrics.yml"
+      }
+    }
+  }
+}
+
+/*
+  Notes:
+  - This file is an example and MUST NOT contain real API keys or secrets.
+  - Set real values using environment variables, or place a local non-committed
+    file named `claude_desktop_config_test.json` (which is ignored by .gitignore).
+  - Example usage in macOS Claude Desktop config: set the environment key
+    `GEMINI_API_KEY` in your system environment or use a secure secret manager.
+*/

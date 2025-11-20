@@ -49,4 +49,5 @@ build/
 docs/_build/
 site/
 claude_desktop_config_test.json
-claude_desktop_config_test.json
+scripts/clean_history_filter_repo.sh
+
