@@ -48,3 +48,4 @@ build/
 # Documentation builds
 docs/_build/
 site/
+claude_desktop_config_test.json
